@@ -9,19 +9,18 @@ module Doorkeeper
       validate :resource_owner, error: :invalid_grant
       validate :scopes,         error: :invalid_scope
 
-      attr_accessor :server, :resource_owner, :credentials, :access_token
+      attr_accessor :server, :resource_owner, :access_token
       attr_accessor :client
 
-      def initialize(server, credentials, resource_owner, parameters = {})
+      # Deprecated :credentials accessor:
+      attr_accessor :credentials
+      deprecate :credentials
+
+      def initialize(server, client, resource_owner, parameters = {})
         @server          = server
         @resource_owner  = resource_owner
-        @credentials     = credentials
+        @client          = client
         @original_scopes = parameters[:scope]
-
-        if credentials
-          @client = Application.by_uid_and_secret credentials.uid,
-                                                  credentials.secret
-        end
       end
 
       private
@@ -40,7 +39,13 @@ module Doorkeeper
       end
 
       def validate_client
-        !credentials || !!client
+        # Validate only if a client was given:
+        if client.present?
+          !!client
+        else
+          # No client given... but resource_owner given. Should issue token.
+          true
+        end
       end
     end
   end

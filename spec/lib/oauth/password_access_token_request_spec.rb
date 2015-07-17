@@ -1,7 +1,7 @@
 require 'spec_helper_integration'
 
 module Doorkeeper::OAuth
-  describe PasswordAccessTokenRequest do
+  describe PasswordAccessTokenRequest, focus: true do
     let(:server) do
       double(
         :server,
@@ -11,12 +11,11 @@ module Doorkeeper::OAuth
         custom_access_token_expires_in: ->(_app) { nil }
       )
     end
-    let(:credentials) { Client::Credentials.new(client.uid, client.secret) }
     let(:client) { FactoryGirl.create(:application) }
     let(:owner)  { double :owner, id: 99 }
 
     subject do
-      PasswordAccessTokenRequest.new(server, credentials, owner)
+      PasswordAccessTokenRequest.new(server, client, owner)
     end
 
     it 'issues a new token for the client' do
@@ -27,14 +26,14 @@ module Doorkeeper::OAuth
 
     it 'issues a new token without a client' do
       expect do
-        subject.credentials = nil
+        subject.client = nil
         subject.authorize
       end.to change { Doorkeeper::AccessToken.count }.by(1)
     end
 
     it 'does not issue a new token with an invalid client' do
       expect do
-        subject.client = nil
+        subject.client = FactoryGirl.build :application # non-registered app
         subject.authorize
       end.to_not change { Doorkeeper::AccessToken.count }
 
@@ -48,7 +47,7 @@ module Doorkeeper::OAuth
     end
 
     it 'optionally accepts the client' do
-      subject.credentials = nil
+      subject.client = nil
       expect(subject).to be_valid
     end
 
